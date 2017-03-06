@@ -10,12 +10,12 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
 )
 
 const (
+	// DefaultTableName is the default table name used by the dynamodb store
 	DefaultTableName = "dynamodbstore"
 )
 
@@ -29,13 +29,16 @@ var (
 	errNotFound         = errors.New("session not found")
 	errMalformedSession = errors.New("malformed session data")
 	errEncodeFailed     = errors.New("failed to encode data")
-	errDecodeFailed     = errors.New("failed to dencode data")
+	errDecodeFailed     = errors.New("failed to decode data")
 )
 
+// Store provides an implementation of the gorilla sessions.Store interface backed by DynamoDB
 type Store struct {
-	tableName string
-	codecs    []securecookie.Codec
-	ddb       *dynamodb.DynamoDB
+	tableName  string
+	codecs     []securecookie.Codec
+	config     *aws.Config
+	ddb        *dynamodb.DynamoDB
+	serializer serializer
 }
 
 // Get should return a cached session.
@@ -89,29 +92,45 @@ func (s *Store) Save(req *http.Request, w http.ResponseWriter, session *sessions
 	return nil
 }
 
-func New(tableName string, codecs ...securecookie.Codec) (*Store, error) {
-	region := os.Getenv("AWS_DEFAULT_REGION")
-	if region == "" {
-		region = os.Getenv("AWS_REGION")
+// New instantiates a new Store that implements gorilla's sessions.Store interface
+func New(opts ...Option) (*Store, error) {
+	store := &Store{
+		tableName: DefaultTableName,
 	}
 
-	cfg := &aws.Config{Region: aws.String(region)}
-	s, err := session.NewSession(cfg)
-	if err != nil {
-		return nil, err
+	for _, opt := range opts {
+		opt(store)
 	}
 
-	api := dynamodb.New(s)
+	if store.ddb == nil {
+		if store.config == nil {
+			region := os.Getenv("AWS_DEFAULT_REGION")
+			if region == "" {
+				region = os.Getenv("AWS_REGION")
+			}
 
-	return &Store{
-		tableName: tableName,
-		codecs:    codecs,
-		ddb:       api,
-	}, nil
+			store.config = &aws.Config{Region: aws.String(region)}
+		}
+
+		s, err := session.NewSession(store.config)
+		if err != nil {
+			return nil, err
+		}
+
+		store.ddb = dynamodb.New(s)
+	}
+
+	if len(store.codecs) > 0 {
+		store.serializer = &codecSerializer{codecs: store.codecs}
+	} else {
+		store.serializer = &gobSerializer{}
+	}
+
+	return store, nil
 }
 
 func (s *Store) save(name string, session *sessions.Session) error {
-	av, err := s.marshal(name, session)
+	av, err := s.serializer.marshal(name, session)
 	if err != nil {
 		return err
 	}
@@ -141,7 +160,7 @@ func (s *Store) load(name, value string, session *sessions.Session) error {
 		return err
 	}
 
-	err = s.unmarshal(name, out.Item, session)
+	err = s.serializer.unmarshal(name, out.Item, session)
 	if err != nil {
 		return err
 	}
@@ -149,68 +168,7 @@ func (s *Store) load(name, value string, session *sessions.Session) error {
 	return nil
 }
 
-func (s *Store) unmarshal(name string, in map[string]*dynamodb.AttributeValue, session *sessions.Session) error {
-	if len(in) == 0 {
-		return errNotFound
-	}
-
-	// id
-	av, ok := in[idField]
-	if !ok || av.S == nil {
-		return errMalformedSession
-	}
-	id := *av.S
-
-	// payload
-
-	av, ok = in[valuesField]
-	if !ok || av.S == nil {
-		return errMalformedSession
-	}
-
-	values := map[interface{}]interface{}{}
-	err := securecookie.DecodeMulti(name, *av.S, &values, s.codecs...)
-	if err != nil {
-		return errDecodeFailed
-	}
-
-	session.IsNew = false
-	session.ID = id
-	session.Values = values
-
-	// options
-
-	av, ok = in[optionsField]
-	if ok {
-		options := &sessions.Options{}
-		err = dynamodbattribute.Unmarshal(av, options)
-		if err != nil {
-			return err
-		}
-		session.Options = options
-	}
-
-	return nil
-}
-
-func (s *Store) marshal(name string, session *sessions.Session) (map[string]*dynamodb.AttributeValue, error) {
-	values, err := securecookie.EncodeMulti(name, session.Values, s.codecs...)
-	if err != nil {
-		return nil, errEncodeFailed
-	}
-
-	av := map[string]*dynamodb.AttributeValue{
-		idField:     {S: aws.String(session.ID)},
-		valuesField: {S: aws.String(values)},
-	}
-
-	if session.Options != nil {
-		options, err := dynamodbattribute.Marshal(session.Options)
-		if err != nil {
-			return nil, errors.New("options failed")
-		}
-		av[optionsField] = options
-	}
-
-	return av, nil
+type serializer interface {
+	marshal(name string, session *sessions.Session) (map[string]*dynamodb.AttributeValue, error)
+	unmarshal(name string, in map[string]*dynamodb.AttributeValue, session *sessions.Session) error
 }
