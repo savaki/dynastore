@@ -9,7 +9,7 @@ AWS DynamoDB store for Gorilla Toolkit using AWS library.
 go get github.com/savaki/dynastore/...
 ```
 
-## Environment Variables
+### Environment Variables
 
 dynastore uses the common AWS environment variables:
 
@@ -20,22 +20,22 @@ dynastore uses the common AWS environment variables:
 dynastore will also use AWS roles if they are available.  In that case, only
 ```AWS_DEFAULT_REGION``` or ```AWS_REGION``` need be set.
 
-AWS settings can be specified by the Options:
+Alternately, AWS settings can be specified using Options:
 
 * ```dynastore.AWSConfig(*aws.Config)``` 
 * ```dynastore.DynamoDB(*dynamodb.DynamoDB)```
 
-## Tables
+### Tables
 
 dynastore provides a utility to create/delete the dynamodb table.
 
-### Create Table
+#### Create Table
 
 ```
 dynastore -table your-table-name -read 5 -write 5 
 ```
 
-### Delete Table
+#### Delete Table
 
 Use the -delete flag to indicate the tables should be deleted instead.
 
