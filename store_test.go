@@ -72,6 +72,37 @@ func TestLifecycle(t *testing.T) {
 				t.Error("expected existing session; got new session")
 				return
 			}
+
+			// Delete Session ---------------------
+
+			found.Options.MaxAge = -1
+			w = httptest.NewRecorder()
+			err = store.Save(req, w, found)
+			if err != nil {
+				t.Errorf("expected Save returns nil; got %v", err)
+				return
+			}
+			cookies = w.Result().Cookies()
+			if v := len(cookies); v != 1 {
+				t.Errorf("expected Save sets 1 cookie; got %v", v)
+				return
+			}
+			if cookie := cookies[0]; cookie.Value != "" {
+				t.Errorf("expected cookie to be cleared; got %v", cookie.Value)
+				return
+			}
+
+			// Verify Session Deleted -------------
+
+			found, err = store.New(req, name)
+			if err != nil {
+				t.Errorf("expected nil; got %v", err)
+				return
+			}
+			if !found.IsNew {
+				t.Error("expected new session; got existing session")
+				return
+			}
 		})
 	}
 }

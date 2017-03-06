@@ -84,14 +84,26 @@ func (s *Store) Save(req *http.Request, w http.ResponseWriter, session *sessions
 		return err
 	}
 
+	if session.Options != nil && session.Options.MaxAge < 0 {
+		cookie := newCookie(session, session.Name(), "")
+		http.SetCookie(w, cookie)
+		return s.delete(session.ID)
+	}
+
 	if !session.IsNew {
 		// no need to set cookies if they already exist
 		return nil
 	}
 
+	cookie := newCookie(session, session.Name(), session.ID)
+	http.SetCookie(w, cookie)
+	return nil
+}
+
+func newCookie(session *sessions.Session, name, value string) *http.Cookie {
 	cookie := &http.Cookie{
-		Name:  session.Name(),
-		Value: session.ID,
+		Name:  name,
+		Value: value,
 	}
 
 	if opts := session.Options; opts != nil {
@@ -102,8 +114,7 @@ func (s *Store) Save(req *http.Request, w http.ResponseWriter, session *sessions
 		cookie.Secure = opts.Secure
 	}
 
-	http.SetCookie(w, cookie)
-	return nil
+	return cookie
 }
 
 // New instantiates a new Store that implements gorilla's sessions.Store interface
@@ -158,6 +169,16 @@ func (s *Store) save(name string, session *sessions.Session) error {
 	}
 
 	return nil
+}
+
+func (s *Store) delete(id string) error {
+	_, err := s.ddb.DeleteItem(&dynamodb.DeleteItemInput{
+		TableName: aws.String(s.tableName),
+		Key: map[string]*dynamodb.AttributeValue{
+			"id": {S: aws.String(id)},
+		},
+	})
+	return err
 }
 
 // load loads a session data from the database.
