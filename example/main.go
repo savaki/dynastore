@@ -7,11 +7,11 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
-	"github.com/savaki/dynamodbstore"
+	"github.com/savaki/dynastore"
 )
 
 func main() {
-	store, err := dynamodbstore.New(dynamodbstore.Path("/"), dynamodbstore.HTTPOnly())
+	store, err := dynastore.New(dynastore.Path("/"), dynastore.HTTPOnly())
 	if err != nil {
 		log.Fatalln(err)
 	}

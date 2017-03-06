@@ -10,12 +10,12 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/savaki/dynamodbstore"
+	"github.com/savaki/dynastore"
 )
 
 func main() {
 	var (
-		tableName     = flag.String("table", dynamodbstore.DefaultTableName, "DynamoDB table name")
+		tableName     = flag.String("table", dynastore.DefaultTableName, "DynamoDB table name")
 		delete        = flag.Bool("delete", false, "Delete the table")
 		readCapacity  = flag.Int64("read", 5, "Provisioned DynamoDB Read capacity")
 		writeCapacity = flag.Int64("write", 5, "Provisioned DynamoDB Write capacity")

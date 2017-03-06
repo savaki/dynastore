@@ -1,4 +1,4 @@
-package dynamodbstore
+package dynastore
 
 import (
 	"github.com/aws/aws-sdk-go/aws"
@@ -7,7 +7,7 @@ import (
 	"github.com/gorilla/sessions"
 )
 
-// Option provides options to creating a dynamodbstore
+// Option provides options to creating a dynastore
 type Option func(*Store)
 
 // Codecs uses the specified codecs to encrypt the cookie data

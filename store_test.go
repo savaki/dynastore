@@ -1,4 +1,4 @@
-package dynamodbstore
+package dynastore
 
 import (
 	"net/http"

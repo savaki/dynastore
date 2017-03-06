@@ -1,4 +1,4 @@
-package dynamodbstore
+package dynastore
 
 import (
 	"encoding/base32"
@@ -16,7 +16,7 @@ import (
 
 const (
 	// DefaultTableName is the default table name used by the dynamodb store
-	DefaultTableName = "dynamodbstore"
+	DefaultTableName = "dynastore"
 )
 
 const (
