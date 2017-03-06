@@ -39,6 +39,7 @@ type Store struct {
 	config     *aws.Config
 	ddb        *dynamodb.DynamoDB
 	serializer serializer
+	options    sessions.Options
 }
 
 // Get should return a cached session.
@@ -65,6 +66,14 @@ func (s *Store) New(req *http.Request, name string) (*sessions.Session, error) {
 	session := sessions.NewSession(s, name)
 	session.ID = strings.TrimRight(base32.StdEncoding.EncodeToString(securecookie.GenerateRandomKey(32)), "=")
 	session.IsNew = true
+	session.Options = &sessions.Options{
+		Path:     s.options.Path,
+		Domain:   s.options.Domain,
+		MaxAge:   s.options.MaxAge,
+		Secure:   s.options.Secure,
+		HttpOnly: s.options.HttpOnly,
+	}
+
 	return session, nil
 }
 
@@ -73,6 +82,11 @@ func (s *Store) Save(req *http.Request, w http.ResponseWriter, session *sessions
 	err := s.save(session.Name(), session)
 	if err != nil {
 		return err
+	}
+
+	if !session.IsNew {
+		// no need to set cookies if they already exist
+		return nil
 	}
 
 	cookie := &http.Cookie{
