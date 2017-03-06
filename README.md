@@ -2,8 +2,9 @@
 
 AWS DynamoDB store for Gorilla Toolkit using AWS library.
 
+Uses the official AWS library, [github.com/aws/aws-sdk-go/aws](github.com/aws/aws-sdk-go/aws)
 
-## Installation
+### Installation
 
 ```
 go get github.com/savaki/dynastore/...
