@@ -20,8 +20,10 @@ dynastore uses the common AWS environment variables:
 dynastore will also use AWS roles if they are available.  In that case, only
 ```AWS_DEFAULT_REGION``` or ```AWS_REGION``` need be set.
 
-AWS settings can be specified by the Options, ```dynastore.AWSConfig(*aws.Config)``` 
-and ```dynastore.DynamoDB(*dynamodb.DynamoDB)```
+AWS settings can be specified by the Options:
+
+* ```dynastore.AWSConfig(*aws.Config)``` 
+* ```dynastore.DynamoDB(*dynamodb.DynamoDB)```
 
 ## Tables
 
