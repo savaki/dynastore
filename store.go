@@ -19,7 +19,9 @@ import (
 	"errors"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -31,6 +33,9 @@ import (
 const (
 	// DefaultTableName is the default table name used by the dynamodb store
 	DefaultTableName = "dynastore"
+
+	// DefaultTTLField contains the default name of the ttl field
+	DefaultTTLField = "ttl"
 )
 
 const (
@@ -49,6 +54,7 @@ var (
 // Store provides an implementation of the gorilla sessions.Store interface backed by DynamoDB
 type Store struct {
 	tableName  string
+	ttlField   string
 	codecs     []securecookie.Codec
 	config     *aws.Config
 	ddb        *dynamodb.DynamoDB
@@ -135,6 +141,7 @@ func newCookie(session *sessions.Session, name, value string) *http.Cookie {
 func New(opts ...Option) (*Store, error) {
 	store := &Store{
 		tableName: DefaultTableName,
+		ttlField:  DefaultTTLField,
 	}
 
 	for _, opt := range opts {
@@ -174,6 +181,12 @@ func (s *Store) save(name string, session *sessions.Session) error {
 		return err
 	}
 
+	if s.ttlField != "" && session.Options != nil && session.Options.MaxAge > 0 {
+		expiresAt := time.Now().Add(time.Duration(session.Options.MaxAge) * time.Second)
+		ttl := strconv.FormatInt(expiresAt.Unix(), 10)
+		av[s.ttlField] = &dynamodb.AttributeValue{N: aws.String(ttl)}
+	}
+
 	_, err = s.ddb.PutItem(&dynamodb.PutItemInput{
 		TableName: aws.String(s.tableName),
 		Item:      av,
@@ -207,6 +220,26 @@ func (s *Store) load(name, value string, session *sessions.Session) error {
 	})
 	if err != nil {
 		return err
+	}
+
+	if len(out.Item) == 0 {
+		return errNotFound
+	}
+
+	ttl := int64(0)
+	if av, ok := out.Item[s.ttlField]; ok {
+		if av.N == nil {
+			return errMalformedSession
+		}
+		v, err := strconv.ParseInt(*av.N, 10, 64)
+		if err != nil {
+			return errMalformedSession
+		}
+		ttl = v
+	}
+
+	if ttl > 0 && ttl < time.Now().Unix() {
+		return errNotFound
 	}
 
 	err = s.serializer.unmarshal(name, out.Item, session)

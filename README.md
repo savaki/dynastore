@@ -1,6 +1,6 @@
 # dynastore
 
-AWS DynamoDB store for Gorilla Toolkit using AWS library.
+AWS DynamoDB store for Gorilla Toolkit using AWS library.  Includes support for DynamoDB's TTL feature.
 
 Uses the official AWS library, [github.com/aws/aws-sdk-go/aws](github.com/aws/aws-sdk-go/aws)
 

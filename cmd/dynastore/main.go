@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -30,6 +31,7 @@ import (
 func main() {
 	var (
 		tableName     = flag.String("table", dynastore.DefaultTableName, "DynamoDB table name")
+		ttl           = flag.String("ttl", "ttl", "DynamoDB TTL field")
 		delete        = flag.Bool("delete", false, "Delete the table")
 		readCapacity  = flag.Int64("read", 5, "Provisioned DynamoDB Read capacity")
 		writeCapacity = flag.Int64("write", 5, "Provisioned DynamoDB Write capacity")
@@ -91,5 +93,30 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Println("Successfully created table")
+
+		fmt.Printf("Configuring TTL on dynamodb table, %v [%v]\n", *tableName, region)
+		for i := 0; i < 12; i++ {
+			_, err = api.UpdateTimeToLive(&dynamodb.UpdateTimeToLiveInput{
+				TableName: tableName,
+				TimeToLiveSpecification: &dynamodb.TimeToLiveSpecification{
+					AttributeName: ttl,
+					Enabled:       aws.Bool(true),
+				},
+			})
+			if err != nil {
+				if v, ok := err.(awserr.Error); ok {
+					if code := v.Code(); code == "ResourceNotFoundException" || code == "ResourceInUseException" {
+						fmt.Println("Waiting for table to be created ...")
+						time.Sleep(time.Second * 10)
+						continue
+					}
+				}
+				fmt.Printf("** ERR *** unable to configure ttl for table - %v\n", err)
+				os.Exit(1)
+			}
+
+			break
+		}
+		fmt.Println("Successfully configured TTL")
 	}
 }

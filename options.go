@@ -49,6 +49,7 @@ func DynamoDB(ddb *dynamodb.DynamoDB) Option {
 func TableName(tableName string) Option {
 	return func(s *Store) {
 		s.tableName = tableName
+		s.ttlField = "ttl"
 	}
 }
 
@@ -91,5 +92,12 @@ func Secure() Option {
 func HTTPOnly() Option {
 	return func(s *Store) {
 		s.options.HttpOnly = true
+	}
+}
+
+// TTLField sets the field used to store the ttl value
+func TTLField(ttlField string) Option {
+	return func(s *Store) {
+		s.ttlField = ttlField
 	}
 }

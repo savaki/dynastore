@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -11,7 +12,7 @@ import (
 )
 
 func main() {
-	store, err := dynastore.New(dynastore.Path("/"), dynastore.HTTPOnly())
+	store, err := dynastore.New(dynastore.Path("/"), dynastore.HTTPOnly(), dynastore.MaxAge(900))
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -19,6 +20,7 @@ func main() {
 	router := mux.NewRouter()
 	router.Path("/").HandlerFunc(withSession(store, "blah", hello))
 
+	fmt.Println("Starting server on port 3001")
 	log.Fatalln(http.ListenAndServe(":3001", router))
 }
 
