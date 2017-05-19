@@ -63,18 +63,18 @@ type Store struct {
 }
 
 // Get should return a cached session.
-func (s *Store) Get(req *http.Request, name string) (*sessions.Session, error) {
-	return sessions.GetRegistry(req).Get(s, name)
+func (store *Store) Get(req *http.Request, name string) (*sessions.Session, error) {
+	return sessions.GetRegistry(req).Get(store, name)
 }
 
 // New should create and return a new session.
 //
 // Note that New should never return a nil session, even in the case of
 // an error if using the Registry infrastructure to cache the session.
-func (s *Store) New(req *http.Request, name string) (*sessions.Session, error) {
+func (store *Store) New(req *http.Request, name string) (*sessions.Session, error) {
 	if cookie, errCookie := req.Cookie(name); errCookie == nil {
-		session := sessions.NewSession(s, name)
-		err := s.load(name, cookie.Value, session)
+		session := sessions.NewSession(store, name)
+		err := store.load(name, cookie.Value, session)
 		if err == nil {
 			return session, nil
 		}
@@ -83,23 +83,23 @@ func (s *Store) New(req *http.Request, name string) (*sessions.Session, error) {
 		}
 	}
 
-	session := sessions.NewSession(s, name)
+	session := sessions.NewSession(store, name)
 	session.ID = strings.TrimRight(base32.StdEncoding.EncodeToString(securecookie.GenerateRandomKey(32)), "=")
 	session.IsNew = true
 	session.Options = &sessions.Options{
-		Path:     s.options.Path,
-		Domain:   s.options.Domain,
-		MaxAge:   s.options.MaxAge,
-		Secure:   s.options.Secure,
-		HttpOnly: s.options.HttpOnly,
+		Path:     store.options.Path,
+		Domain:   store.options.Domain,
+		MaxAge:   store.options.MaxAge,
+		Secure:   store.options.Secure,
+		HttpOnly: store.options.HttpOnly,
 	}
 
 	return session, nil
 }
 
 // Save should persist session to the underlying store implementation.
-func (s *Store) Save(req *http.Request, w http.ResponseWriter, session *sessions.Session) error {
-	err := s.save(session.Name(), session)
+func (store *Store) Save(req *http.Request, w http.ResponseWriter, session *sessions.Session) error {
+	err := store.save(session.Name(), session)
 	if err != nil {
 		return err
 	}
@@ -107,7 +107,7 @@ func (s *Store) Save(req *http.Request, w http.ResponseWriter, session *sessions
 	if session.Options != nil && session.Options.MaxAge < 0 {
 		cookie := newCookie(session, session.Name(), "")
 		http.SetCookie(w, cookie)
-		return s.delete(session.ID)
+		return store.delete(session.ID)
 	}
 
 	if !session.IsNew {
@@ -175,20 +175,20 @@ func New(opts ...Option) (*Store, error) {
 	return store, nil
 }
 
-func (s *Store) save(name string, session *sessions.Session) error {
-	av, err := s.serializer.marshal(name, session)
+func (store *Store) save(name string, session *sessions.Session) error {
+	av, err := store.serializer.marshal(name, session)
 	if err != nil {
 		return err
 	}
 
-	if s.ttlField != "" && session.Options != nil && session.Options.MaxAge > 0 {
+	if store.ttlField != "" && session.Options != nil && session.Options.MaxAge > 0 {
 		expiresAt := time.Now().Add(time.Duration(session.Options.MaxAge) * time.Second)
 		ttl := strconv.FormatInt(expiresAt.Unix(), 10)
-		av[s.ttlField] = &dynamodb.AttributeValue{N: aws.String(ttl)}
+		av[store.ttlField] = &dynamodb.AttributeValue{N: aws.String(ttl)}
 	}
 
-	_, err = s.ddb.PutItem(&dynamodb.PutItemInput{
-		TableName: aws.String(s.tableName),
+	_, err = store.ddb.PutItem(&dynamodb.PutItemInput{
+		TableName: aws.String(store.tableName),
 		Item:      av,
 	})
 	if err != nil {
@@ -198,9 +198,9 @@ func (s *Store) save(name string, session *sessions.Session) error {
 	return nil
 }
 
-func (s *Store) delete(id string) error {
-	_, err := s.ddb.DeleteItem(&dynamodb.DeleteItemInput{
-		TableName: aws.String(s.tableName),
+func (store *Store) delete(id string) error {
+	_, err := store.ddb.DeleteItem(&dynamodb.DeleteItemInput{
+		TableName: aws.String(store.tableName),
 		Key: map[string]*dynamodb.AttributeValue{
 			"id": {S: aws.String(id)},
 		},
@@ -210,9 +210,9 @@ func (s *Store) delete(id string) error {
 
 // load loads a session data from the database.
 // True is returned if there is a session data in the database.
-func (s *Store) load(name, value string, session *sessions.Session) error {
-	out, err := s.ddb.GetItem(&dynamodb.GetItemInput{
-		TableName:      aws.String(s.tableName),
+func (store *Store) load(name, value string, session *sessions.Session) error {
+	out, err := store.ddb.GetItem(&dynamodb.GetItemInput{
+		TableName:      aws.String(store.tableName),
 		ConsistentRead: aws.Bool(true),
 		Key: map[string]*dynamodb.AttributeValue{
 			"id": {S: aws.String(value)},
@@ -227,7 +227,7 @@ func (s *Store) load(name, value string, session *sessions.Session) error {
 	}
 
 	ttl := int64(0)
-	if av, ok := out.Item[s.ttlField]; ok {
+	if av, ok := out.Item[store.ttlField]; ok {
 		if av.N == nil {
 			return errMalformedSession
 		}
@@ -242,7 +242,7 @@ func (s *Store) load(name, value string, session *sessions.Session) error {
 		return errNotFound
 	}
 
-	err = s.serializer.unmarshal(name, out.Item, session)
+	err = store.serializer.unmarshal(name, out.Item, session)
 	if err != nil {
 		return err
 	}
