@@ -78,9 +78,6 @@ func (store *Store) New(req *http.Request, name string) (*sessions.Session, erro
 		if err == nil {
 			return s, nil
 		}
-		if err != errNotFound {
-			return nil, err
-		}
 	}
 
 	s := sessions.NewSession(store, name)
