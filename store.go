@@ -73,20 +73,20 @@ func (store *Store) Get(req *http.Request, name string) (*sessions.Session, erro
 // an error if using the Registry infrastructure to cache the session.
 func (store *Store) New(req *http.Request, name string) (*sessions.Session, error) {
 	if cookie, errCookie := req.Cookie(name); errCookie == nil {
-		session := sessions.NewSession(store, name)
-		err := store.load(name, cookie.Value, session)
+		s := sessions.NewSession(store, name)
+		err := store.load(name, cookie.Value, s)
 		if err == nil {
-			return session, nil
+			return s, nil
 		}
 		if err != errNotFound {
 			return nil, err
 		}
 	}
 
-	session := sessions.NewSession(store, name)
-	session.ID = strings.TrimRight(base32.StdEncoding.EncodeToString(securecookie.GenerateRandomKey(32)), "=")
-	session.IsNew = true
-	session.Options = &sessions.Options{
+	s := sessions.NewSession(store, name)
+	s.ID = strings.TrimRight(base32.StdEncoding.EncodeToString(securecookie.GenerateRandomKey(32)), "=")
+	s.IsNew = true
+	s.Options = &sessions.Options{
 		Path:     store.options.Path,
 		Domain:   store.options.Domain,
 		MaxAge:   store.options.MaxAge,
@@ -94,7 +94,7 @@ func (store *Store) New(req *http.Request, name string) (*sessions.Session, erro
 		HttpOnly: store.options.HttpOnly,
 	}
 
-	return session, nil
+	return s, nil
 }
 
 // Save should persist session to the underlying store implementation.
