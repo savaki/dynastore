@@ -15,6 +15,9 @@
 package dynastore
 
 import (
+	"fmt"
+	"io"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/gorilla/securecookie"
@@ -71,6 +74,15 @@ func Path(v string) Option {
 func Domain(v string) Option {
 	return func(s *Store) {
 		s.options.Domain = v
+	}
+}
+
+// Output
+func Output(w io.Writer) Option {
+	return func(s *Store) {
+		s.printf = func(format string, args ...interface{}) {
+			fmt.Fprintf(w, format, args...)
+		}
 	}
 }
 

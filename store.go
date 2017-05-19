@@ -60,6 +60,7 @@ type Store struct {
 	ddb        *dynamodb.DynamoDB
 	serializer serializer
 	options    sessions.Options
+	printf     func(format string, args ...interface{})
 }
 
 // Get should return a cached session.
@@ -139,6 +140,7 @@ func New(opts ...Option) (*Store, error) {
 	store := &Store{
 		tableName: DefaultTableName,
 		ttlField:  DefaultTTLField,
+		printf:    func(format string, args ...interface{}) {},
 	}
 
 	for _, opt := range opts {
@@ -175,6 +177,7 @@ func New(opts ...Option) (*Store, error) {
 func (store *Store) save(name string, session *sessions.Session) error {
 	av, err := store.serializer.marshal(name, session)
 	if err != nil {
+		store.printf("dynastore: failed to marshal session - %v", err)
 		return err
 	}
 
@@ -189,6 +192,7 @@ func (store *Store) save(name string, session *sessions.Session) error {
 		Item:      av,
 	})
 	if err != nil {
+		store.printf("dynastore: PutItem failed - %v", err)
 		return err
 	}
 
@@ -202,7 +206,11 @@ func (store *Store) delete(id string) error {
 			"id": {S: aws.String(id)},
 		},
 	})
-	return err
+	if err != nil {
+		store.printf("dynastore: delete failed - %v", err)
+		return err
+	}
+	return nil
 }
 
 // load loads a session data from the database.
@@ -216,31 +224,37 @@ func (store *Store) load(name, value string, session *sessions.Session) error {
 		},
 	})
 	if err != nil {
+		store.printf("dynastore: GetItem failed")
 		return err
 	}
 
 	if len(out.Item) == 0 {
+		store.printf("dynastore: session not found")
 		return errNotFound
 	}
 
 	ttl := int64(0)
 	if av, ok := out.Item[store.ttlField]; ok {
 		if av.N == nil {
+			store.printf("dynastore: no ttl associated with session")
 			return errMalformedSession
 		}
 		v, err := strconv.ParseInt(*av.N, 10, 64)
 		if err != nil {
+			store.printf("dynastore: malformed session - %v", err)
 			return errMalformedSession
 		}
 		ttl = v
 	}
 
 	if ttl > 0 && ttl < time.Now().Unix() {
+		store.printf("dynastore: session expired")
 		return errNotFound
 	}
 
 	err = store.serializer.unmarshal(name, out.Item, session)
 	if err != nil {
+		store.printf("dynastore: unable to unmarshal session - %v", err)
 		return err
 	}
 
