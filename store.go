@@ -15,6 +15,7 @@
 package dynastore
 
 import (
+	"context"
 	"encoding/base32"
 	"errors"
 	"net/http"
@@ -75,7 +76,7 @@ func (store *Store) Get(req *http.Request, name string) (*sessions.Session, erro
 func (store *Store) New(req *http.Request, name string) (*sessions.Session, error) {
 	if cookie, errCookie := req.Cookie(name); errCookie == nil {
 		s := sessions.NewSession(store, name)
-		err := store.load(name, cookie.Value, s)
+		err := store.load(req.Context(), name, cookie.Value, s)
 		if err == nil {
 			return s, nil
 		}
@@ -97,7 +98,7 @@ func (store *Store) New(req *http.Request, name string) (*sessions.Session, erro
 
 // Save should persist session to the underlying store implementation.
 func (store *Store) Save(req *http.Request, w http.ResponseWriter, session *sessions.Session) error {
-	err := store.save(session.Name(), session)
+	err := store.save(req.Context(), session.Name(), session)
 	if err != nil {
 		return err
 	}
@@ -105,7 +106,7 @@ func (store *Store) Save(req *http.Request, w http.ResponseWriter, session *sess
 	if session.Options != nil && session.Options.MaxAge < 0 {
 		cookie := newCookie(session, session.Name(), "")
 		http.SetCookie(w, cookie)
-		return store.delete(session.ID)
+		return store.delete(req.Context(), session.ID)
 	}
 
 	if !session.IsNew {
@@ -174,7 +175,7 @@ func New(opts ...Option) (*Store, error) {
 	return store, nil
 }
 
-func (store *Store) save(name string, session *sessions.Session) error {
+func (store *Store) save(ctx context.Context, name string, session *sessions.Session) error {
 	av, err := store.serializer.marshal(name, session)
 	if err != nil {
 		store.printf("dynastore: failed to marshal session - %v\n", err)
@@ -187,7 +188,7 @@ func (store *Store) save(name string, session *sessions.Session) error {
 		av[store.ttlField] = &dynamodb.AttributeValue{N: aws.String(ttl)}
 	}
 
-	_, err = store.ddb.PutItem(&dynamodb.PutItemInput{
+	_, err = store.ddb.PutItemWithContext(ctx, &dynamodb.PutItemInput{
 		TableName: aws.String(store.tableName),
 		Item:      av,
 	})
@@ -199,8 +200,8 @@ func (store *Store) save(name string, session *sessions.Session) error {
 	return nil
 }
 
-func (store *Store) delete(id string) error {
-	_, err := store.ddb.DeleteItem(&dynamodb.DeleteItemInput{
+func (store *Store) delete(ctx context.Context, id string) error {
+	_, err := store.ddb.DeleteItemWithContext(ctx, &dynamodb.DeleteItemInput{
 		TableName: aws.String(store.tableName),
 		Key: map[string]*dynamodb.AttributeValue{
 			"id": {S: aws.String(id)},
@@ -215,8 +216,8 @@ func (store *Store) delete(id string) error {
 
 // load loads a session data from the database.
 // True is returned if there is a session data in the database.
-func (store *Store) load(name, value string, session *sessions.Session) error {
-	out, err := store.ddb.GetItem(&dynamodb.GetItemInput{
+func (store *Store) load(ctx context.Context, name, value string, session *sessions.Session) error {
+	out, err := store.ddb.GetItemWithContext(ctx, &dynamodb.GetItemInput{
 		TableName:      aws.String(store.tableName),
 		ConsistentRead: aws.Bool(true),
 		Key: map[string]*dynamodb.AttributeValue{
