@@ -113,3 +113,10 @@ func TTLField(ttlField string) Option {
 		s.ttlField = ttlField
 	}
 }
+
+// RefreshCookies allows existing sesison cookies to be updated on save
+func RefreshCookies() Option {
+	return func(s *Store) {
+		s.refreshCookies = true
+	}
+}

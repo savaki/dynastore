@@ -54,14 +54,15 @@ var (
 
 // Store provides an implementation of the gorilla sessions.Store interface backed by DynamoDB
 type Store struct {
-	tableName  string
-	ttlField   string
-	codecs     []securecookie.Codec
-	config     *aws.Config
-	ddb        *dynamodb.DynamoDB
-	serializer serializer
-	options    sessions.Options
-	printf     func(format string, args ...interface{})
+	tableName      string
+	ttlField       string
+	codecs         []securecookie.Codec
+	config         *aws.Config
+	ddb            *dynamodb.DynamoDB
+	serializer     serializer
+	options        sessions.Options
+	printf         func(format string, args ...interface{})
+	refreshCookies bool
 }
 
 // Get should return a cached session.
@@ -109,14 +110,16 @@ func (store *Store) Save(req *http.Request, w http.ResponseWriter, session *sess
 		return store.delete(req.Context(), session.ID)
 	}
 
-	if !session.IsNew {
-		// no need to set cookies if they already exist
-		return nil
+	if store.canSetCookie(session) {
+		cookie := newCookie(session, session.Name(), session.ID)
+		http.SetCookie(w, cookie)
 	}
 
-	cookie := newCookie(session, session.Name(), session.ID)
-	http.SetCookie(w, cookie)
 	return nil
+}
+
+func (store *Store) canSetCookie(session *sessions.Session) bool {
+	return session.IsNew || store.refreshCookies
 }
 
 func newCookie(session *sessions.Session, name, value string) *http.Cookie {
