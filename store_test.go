@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-package dynastore
+package dynastore_test
 
 import (
 	"net/http"
@@ -20,6 +20,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/andrewwatson/dynastore"
 	"github.com/gorilla/securecookie"
 )
 
@@ -33,14 +34,14 @@ func TestLifecycle(t *testing.T) {
 		return
 	}
 
-	testCases := map[string][]Option{
-		"gob":   {TableName(tableName)},
-		"codec": {TableName(tableName), Codecs(codec)},
+	testCases := map[string][]dynastore.Option{
+		"gob":   {dynastore.TableName(tableName)},
+		"codec": {dynastore.TableName(tableName), dynastore.Codecs(codec)},
 	}
 
 	for label, tc := range testCases {
 		t.Run(label, func(t *testing.T) {
-			store, err := New(tc...)
+			store, err := dynastore.New(tableName, tc...)
 			if err != nil {
 				t.Errorf("expected nil; got %v", err)
 				return

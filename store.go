@@ -32,8 +32,6 @@ import (
 )
 
 const (
-	// DefaultTableName is the default table name used by the dynamodb store
-	DefaultTableName = "dynastore"
 
 	// DefaultTTLField contains the default name of the ttl field
 	DefaultTTLField = "ttl"
@@ -137,9 +135,9 @@ func newCookie(session *sessions.Session, name, value string) *http.Cookie {
 }
 
 // New instantiates a new Store that implements gorilla's sessions.Store interface
-func New(opts ...Option) (*Store, error) {
+func New(tablename string, opts ...Option) (*Store, error) {
 	store := &Store{
-		tableName: DefaultTableName,
+		tableName: tablename,
 		ttlField:  DefaultTTLField,
 		printf:    func(format string, args ...interface{}) {},
 	}
