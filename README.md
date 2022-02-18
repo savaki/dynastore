@@ -1,13 +1,15 @@
 # dynastore
 
-AWS DynamoDB store for Gorilla Toolkit using AWS library.  Includes support for DynamoDB's TTL feature.
+AWS DynamoDB store for Gorilla Toolkit using AWS library.  
 
-Uses the official AWS library, [github.com/aws/aws-sdk-go/aws](github.com/aws/aws-sdk-go/aws)
+This is a fork and overhaul of the original repo which hadn't been updated in a long time.  I was able to simplify it quite a bit with the v2 API and remove all the serialization code. It also no longer produces output when it encounters errors, it just returns them.
+
+Uses the official AWS library, [github.com/aws/aws-sdk-go-v2/aws](github.com/aws/aws-sdk-go-v2/aws)
 
 ### Installation
 
 ```
-go get github.com/savaki/dynastore/...
+go get github.com/andrewwatson/dynastore@v0.1.0 (current latest tag)
 ```
 
 ### Environment Variables
@@ -48,7 +50,7 @@ dynastore -table your-table-name -delete
 
 ```go
 // Create Store
-store, err := dynastore.New(dynastore.Path("/"), dynastore.HTTPOnly())
+store, err := dynastore.New("session", dynastore.Path("/"), dynastore.HTTPOnly())
 if err != nil {
   log.Fatalln(err)
 }

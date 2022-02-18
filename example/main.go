@@ -6,13 +6,13 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/andywatson/dynastore"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
-	"github.com/savaki/dynastore"
 )
 
 func main() {
-	store, err := dynastore.New(dynastore.Path("/"), dynastore.HTTPOnly(), dynastore.MaxAge(900))
+	store, err := dynastore.New("session", dynastore.Path("/"), dynastore.HTTPOnly(), dynastore.MaxAge(900))
 	if err != nil {
 		log.Fatalln(err)
 	}
