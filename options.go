@@ -15,34 +15,15 @@
 package dynastore
 
 import (
-	"fmt"
-	"io"
-
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/gorilla/securecookie"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/gorilla/sessions"
 )
 
 // Option provides options to creating a dynastore
 type Option func(*Store)
 
-// Codecs uses the specified codecs to encrypt the cookie data
-func Codecs(codecs ...securecookie.Codec) Option {
-	return func(s *Store) {
-		s.codecs = codecs
-	}
-}
-
-// AWSConfig allows the complete AWS configuration to be specified
-func AWSConfig(config *aws.Config) Option {
-	return func(s *Store) {
-		s.config = config
-	}
-}
-
 // DynamoDB allows a pre-configured dynamodb client to be supplied
-func DynamoDB(ddb *dynamodb.DynamoDB) Option {
+func DynamoDB(ddb *dynamodb.Client) Option {
 	return func(s *Store) {
 		s.ddb = ddb
 	}
@@ -52,7 +33,6 @@ func DynamoDB(ddb *dynamodb.DynamoDB) Option {
 func TableName(tableName string) Option {
 	return func(s *Store) {
 		s.tableName = tableName
-		s.ttlField = "ttl"
 	}
 }
 
@@ -78,13 +58,13 @@ func Domain(v string) Option {
 }
 
 // Output
-func Output(w io.Writer) Option {
-	return func(s *Store) {
-		s.printf = func(format string, args ...interface{}) {
-			fmt.Fprintf(w, format, args...)
-		}
-	}
-}
+// func Output(w io.Writer) Option {
+// 	return func(s *Store) {
+// 		s.printf = func(format string, args ...interface{}) {
+// 			fmt.Fprintf(w, format, args...)
+// 		}
+// 	}
+// }
 
 // MaxAge sets the default session option of the same name
 func MaxAge(v int) Option {
@@ -104,12 +84,5 @@ func Secure() Option {
 func HTTPOnly() Option {
 	return func(s *Store) {
 		s.options.HttpOnly = true
-	}
-}
-
-// TTLField sets the field used to store the ttl value
-func TTLField(ttlField string) Option {
-	return func(s *Store) {
-		s.ttlField = ttlField
 	}
 }
