@@ -174,27 +174,15 @@ func (store *Store) Delete(ctx context.Context, id string) error {
 // True is returned if there is a session data in the database.
 func (store *Store) Load(ctx context.Context, value string, session *sessions.Session) error {
 
-	_, err := store.ddb.GetItem(ctx, &dynamodb.GetItemInput{
+	out, err := store.ddb.GetItem(ctx, &dynamodb.GetItemInput{
 		TableName: aws.String(store.tableName),
 		Key: map[string]types.AttributeValue{
 			"SessionHashKey": &types.AttributeValueMemberS{Value: value},
 		},
 	})
-	// out, err := store.ddb.GetItem(&dynamodb.GetItemInput{
-	// 	TableName: aws.String(store.tableName),
-	// 	Key: map[string]types.AttributeValue{
-	// 		"id": &types.AttributeValueMemberS{Value: value},
-	// 	},
-	// })
-	// if err != nil {
-	// 	// store.printf("dynastore: GetItem failed\n")
-	// 	return err
-	// }
 
-	// if len(out.Item) == 0 {
-	// 	// store.printf("dynastore: session not found\n")
-	// 	return errNotFound
-	// }
-
+	for i, v := range out.Item {
+		session.Values[i] = v
+	}
 	return err
 }

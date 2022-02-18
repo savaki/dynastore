@@ -57,15 +57,6 @@ func Domain(v string) Option {
 	}
 }
 
-// Output
-// func Output(w io.Writer) Option {
-// 	return func(s *Store) {
-// 		s.printf = func(format string, args ...interface{}) {
-// 			fmt.Fprintf(w, format, args...)
-// 		}
-// 	}
-// }
-
 // MaxAge sets the default session option of the same name
 func MaxAge(v int) Option {
 	return func(s *Store) {
