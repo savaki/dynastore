@@ -56,6 +56,8 @@ func TestSaveData(t *testing.T) {
 	session := sessions.Session{}
 	session.ID = uuid.NewString()
 
+	t.Logf("Session ID %s\n", session.ID)
+
 	session.Values = map[interface{}]interface{}{
 		"test": "one",
 	}
@@ -70,6 +72,23 @@ func TestSaveData(t *testing.T) {
 		t.Error(err)
 	}
 
+}
+
+func TestLoadData(t *testing.T) {
+	ctx := context.TODO()
+
+	store, err := SetupStore()
+	if err != nil {
+		t.Error(err)
+	}
+	session := sessions.Session{}
+	session.ID = "6bbb5213-a203-4758-82c0-ab7cbd9ea157"
+
+	err = store.Load(ctx, session.ID, &session)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Logf("Values %#v\n", session.Values)
 }
 
 func TestSaveRequest(t *testing.T) {

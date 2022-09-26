@@ -149,7 +149,7 @@ func (store *Store) Persist(ctx context.Context, name string, session *sessions.
 	for i, v := range session.Values {
 		itemMap[i.(string)] = &types.AttributeValueMemberS{Value: v.(string)}
 	}
-
+	itemMap["id"] = &types.AttributeValueMemberS{Value: session.ID}
 	_, err := store.ddb.PutItem(ctx, &dynamodb.PutItemInput{
 		TableName: aws.String(store.tableName),
 		Item:      itemMap,
@@ -163,7 +163,7 @@ func (store *Store) Delete(ctx context.Context, id string) error {
 	_, err := store.ddb.DeleteItem(ctx, &dynamodb.DeleteItemInput{
 		TableName: aws.String(store.tableName),
 		Key: map[string]types.AttributeValue{
-			"SessionHashKey": &types.AttributeValueMemberS{Value: id},
+			"id": &types.AttributeValueMemberS{Value: id},
 		},
 	})
 
@@ -177,9 +177,13 @@ func (store *Store) Load(ctx context.Context, value string, session *sessions.Se
 	out, err := store.ddb.GetItem(ctx, &dynamodb.GetItemInput{
 		TableName: aws.String(store.tableName),
 		Key: map[string]types.AttributeValue{
-			"SessionHashKey": &types.AttributeValueMemberS{Value: value},
+			"id": &types.AttributeValueMemberS{Value: value},
 		},
 	})
+
+	if err != nil {
+		return err
+	}
 
 	for i, v := range out.Item {
 		session.Values[i] = v
