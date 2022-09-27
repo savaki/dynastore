@@ -143,13 +143,13 @@ func New(tablename string, client *dynamodb.Client, opts ...Option) (*Store, err
 
 func (store *Store) Persist(ctx context.Context, name string, session *sessions.Session) error {
 
-	session.Values["SessionHashKey"] = session.ID
+	session.Values["id"] = session.ID
 
 	itemMap := make(map[string]types.AttributeValue)
 	for i, v := range session.Values {
 		itemMap[i.(string)] = &types.AttributeValueMemberS{Value: v.(string)}
 	}
-	itemMap["id"] = &types.AttributeValueMemberS{Value: session.ID}
+	// itemMap["id"] = &types.AttributeValueMemberS{Value: session.ID}
 	_, err := store.ddb.PutItem(ctx, &dynamodb.PutItemInput{
 		TableName: aws.String(store.tableName),
 		Item:      itemMap,
